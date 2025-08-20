@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RouteWalker — To-Do</title>
+  <meta name="color-scheme" content="light dark" />
+  <style>
+    :root{
+      --bg: #0b0c10;
+      --panel: #111318;
+      --panel-2: #171a21;
+      --text: #e8eef8;
+      --muted: #9aa6b2;
+      --accent: #5b9cff;
+      --accent-2:#3f7ee0;
+      --danger:#ff6b6b;
+      --ok:#2ecc71;
+      --warn:#ffb020;
+      --ring: color-mix(in srgb, var(--accent) 45%, transparent);
+      --shadow: 0 6px 18px rgba(0,0,0,.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --gap: 14px;
+      --pad: 14px;
+    }
+    @media (prefers-color-scheme: light){
+      :root{
+        --bg: #f7f8fb;
+        --panel: #ffffff;
+        --panel-2:#f4f6fb;
+        --text: #0f1720;
+        --muted:#475569;
+        --shadow: 0 8px 30px rgba(15,23,32,.08);
+      }
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,var(--panel-2),var(--bg) 120%);
+      color:var(--text);
+      font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, Noto Sans, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    .container{
+      max-width: 980px;
+      margin: 34px auto 80px;
+      padding: 0 16px;
+    }
+    header{
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      margin-bottom: 18px;
+    }
+    .title{
+      display:flex; align-items:center; gap:12px;
+      font-size: clamp(22px, 3vw, 28px); font-weight:700; letter-spacing:.2px;
+    }
+    .title .badge{
+      font-size: 12px; font-weight:600; color:var(--muted);
+      border: 1px dashed color-mix(in srgb, var(--muted) 30%, transparent);
+      padding:2px 8px; border-radius:999px;
+    }
+    .toolbar{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    }
+    .panel{
+      background: var(--panel);
+      border: 1px solid color-mix(in srgb, var(--panel-2) 60%, transparent);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .form{
+      padding: clamp(12px, 2vw, 18px);
+      display:grid; gap:12px;
+      grid-template-columns: 1.2fr .9fr .7fr .7fr auto;
+      align-items:end;
+    }
+    @media (max-width: 900px){
+      .form{ grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 520px){
+      .form{ grid-template-columns: 1fr; }
+    }
+    label{ font-size:12px; color:var(--muted); display:block; margin:0 0 6px; letter-spacing:.18px }
+    input[type="text"], input[type="date"], select, textarea{
+      width:100%; background: var(--panel-2);
+      border:1px solid color-mix(in srgb, var(--panel-2) 70%, transparent);
+      color:var(--text);
+      border-radius: 10px; padding: 10px 12px; outline:none;
+      box-shadow: inset 0 0 0 1px transparent;
+    }
+    textarea{ min-height: 44px; resize: vertical }
+    input:focus, select:focus, textarea:focus{
+      border-color: var(--accent); box-shadow: 0 0 0 4px var(--ring);
+    }
+    .btn{
+      appearance:none; -webkit-appearance:none; cursor:pointer;
+      border:1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+      background: linear-gradient(180deg,var(--accent), var(--accent-2));
+      color:white; font-weight:600; padding:10px 14px; border-radius: 999px;
+    }
+    .btn.secondary{
+      background: var(--panel-2); color: var(--text);
+      border:1px solid color-mix(in srgb, var(--muted) 30%, transparent);
+    }
+    .btn.ghost{
+      background: transparent; color: var(--text);
+      border:1px dashed color-mix(in srgb, var(--muted) 35%, transparent);
+    }
+    .row{ display:flex; gap:8px; align-items:center; flex-wrap:wrap }
+    .list{
+      margin-top: 16px; padding: 10px;
+    }
+    .filters{
+      display:flex; gap:8px; align-items:center; justify-content:space-between;
+      padding: 10px 14px 6px 14px;
+    }
+    .seg{
+      display:inline-flex; background: var(--panel-2); border-radius: 999px; padding: 4px;
+      border:1px solid color-mix(in srgb, var(--panel-2) 70%, transparent);
+    }
+    .seg button{
+      border:none; background:transparent; color:var(--muted); font-weight:600; padding:6px 10px; border-radius:999px; cursor:pointer;
+    }
+    .seg button.active{ background: var(--panel); color: var(--text); box-shadow: var(--shadow) }
+    .seg select{ background:transparent; border:none; color:var(--muted); padding:6px 6px; margin-left:6px }
+    .search{
+      display:flex; align-items:center; gap:8px;
+      background: var(--panel-2); padding:8px 10px; border-radius: 999px;
+      border:1px solid color-mix(in srgb, var(--panel-2) 70%, transparent);
+    }
+    .search input{ background:transparent; border:none; color:var(--text); outline:none; padding:0 }
+    .stats{ color:var(--muted); font-size:12px; }
+    ul.todos{ list-style:none; margin:10px 0 0; padding:0 }
+    .todo{
+      display:grid; grid-template-columns: auto 1fr auto; gap:12px; align-items:center;
+      padding: 12px; border-radius: var(--radius-sm);
+      border:1px solid color-mix(in srgb, var(--panel-2) 70%, transparent);
+      background: linear-gradient(180deg,var(--panel), color-mix(in srgb, var(--panel) 85%, black));
+      margin-bottom: 8px;
+    }
+    .todo.done{ opacity:.65 }
+    .todo .title{ font-size: 15px; font-weight: 650; }
+    .todo .meta{ display:flex; gap:8px; flex-wrap:wrap; color:var(--muted); font-size:12px }
+    .tag{
+      padding:2px 8px; border-radius: 999px; background: var(--panel-2);
+      border:1px solid color-mix(in srgb, var(--panel-2) 65%, transparent);
+      cursor:pointer;
+    }
+    .pri{ font-weight:700 }
+    .pri.low{ color: var(--ok) }
+    .pri.med{ color: var(--warn) }
+    .pri.high{ color: var(--danger) }
+    .todo .actions{ display:flex; gap:6px; }
+    .todo .actions button{
+      border:none; background:transparent; color:var(--muted); padding:6px; border-radius:8px; cursor:pointer
+    }
+    .todo .actions button:hover{ background: var(--panel-2); color: var(--text) }
+    .foot{
+      display:flex; justify-content:space-between; align-items:center; padding: 12px 14px 14px;
+      color:var(--muted); font-size:12px;
+    }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--panel-2); border:1px solid color-mix(in srgb, var(--panel-2) 65%, transparent); padding:2px 6px; border-radius:6px }
+    .danger{ color:var(--danger) }
+    .ok{ color:var(--ok) }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title">
+        <span>🗒️ RouteWalker To-Do</span>
+        <span class="badge">no build • localStorage</span>
+      </div>
+      <div class="toolbar">
+        <button id="exportBtn" class="btn secondary" title="Export JSON">Export</button>
+        <label class="btn ghost" title="Import JSON">
+          <input id="importInput" type="file" accept="application/json" hidden />
+          Import
+        </label>
+        <button id="themeBtn" class="btn ghost" title="Toggle theme">Theme</button>
+      </div>
+    </header>
+
+    <!-- Add / Edit Form -->
+    <section class="panel">
+      <form id="todoForm" class="form" autocomplete="off">
+        <div>
+          <label>Title *</label>
+          <input id="title" type="text" placeholder="What needs doing?" required />
+        </div>
+        <div>
+          <label>Details</label>
+          <input id="notes" type="text" placeholder="Optional notes…" />
+        </div>
+        <div>
+          <label>Priority</label>
+          <select id="priority">
+            <option value="low">Low</option>
+            <option value="med" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div>
+          <label>Due</label>
+          <input id="due" type="date" />
+        </div>
+        <div>
+          <label>Tags (comma)</label>
+          <input id="tags" type="text" placeholder="e.g. backend,docs" />
+        </div>
+        <div class="row" style="grid-column: 1 / -1; justify-content:flex-end">
+          <button id="cancelEdit" type="button" class="btn secondary" style="display:none">Cancel</button>
+          <button class="btn" id="submitBtn" type="submit">Add</button>
+        </div>
+      </form>
+
+      <!-- Filters + Search -->
+      <div class="filters">
+        <div class="row" style="gap:12px">
+          <div class="seg" role="tablist" aria-label="filter">
+            <button data-filter="all" class="active" aria-selected="true">All</button>
+            <button data-filter="active">Active</button>
+            <button data-filter="done">Done</button>
+          </div>
+          <div class="seg">
+            <label style="padding:6px 10px;color:var(--muted)">Sort</label>
+            <select id="sortSelect" aria-label="sort">
+              <option value="created-desc">Newest</option>
+              <option value="created-asc">Oldest</option>
+              <option value="due-asc">Due (soonest)</option>
+              <option value="due-desc">Due (latest)</option>
+              <option value="priority-desc">Priority (high→low)</option>
+              <option value="priority-asc">Priority (low→high)</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <input id="search" type="text" placeholder="Search ( / )" />
+          </div>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="list">
+        <ul id="todoList" class="todos" aria-live="polite"></ul>
+      </div>
+
+      <div class="foot">
+        <div class="stats" id="stats">0 items</div>
+        <div class="row">
+          <span class="kbd">N</span> new
+          <span class="kbd">/</span> search
+          <span class="kbd">⌫</span> delete (on item)
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    /* =========================================================
+       RouteWalker To-Do — no framework, just clear helpers.
+       State shape:
+         { id, title, notes, due, priority, tags[], done, createdAt, updatedAt }
+       Storage key: 'rw_todos_v1'
+       ========================================================= */
+
+    const els = {
+      form: document.getElementById('todoForm'),
+      title: document.getElementById('title'),
+      notes: document.getElementById('notes'),
+      priority: document.getElementById('priority'),
+      due: document.getElementById('due'),
+      tags: document.getElementById('tags'),
+      submitBtn: document.getElementById('submitBtn'),
+      cancelEdit: document.getElementById('cancelEdit'),
+      list: document.getElementById('todoList'),
+      stats: document.getElementById('stats'),
+      search: document.getElementById('search'),
+      sort: document.getElementById('sortSelect'),
+      filterButtons: [...document.querySelectorAll('.seg button[data-filter]')],
+      importInput: document.getElementById('importInput'),
+      exportBtn: document.getElementById('exportBtn'),
+      themeBtn: document.getElementById('themeBtn'),
+    };
+
+    const STORE_KEY = 'rw_todos_v1';
+    const THEME_KEY = 'rw_theme';
+    let state = {
+      items: [],
+      filter: 'all',
+      sort: 'created-desc',
+      search: '',
+      tagFilter: null,
+      editingId: null,
+    };
+
+    // ---------- Utilities ----------
+    const id = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+    const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(state.items));
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(STORE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch { return []; }
+    };
+    const fmtDate = d => d ? new Date(d).toLocaleDateString() : '';
+    const escapeHTML = s => (s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const byPriority = p => ({low:1, med:2, high:3}[p] ?? 0);
+
+    // ---------- Render ----------
+    function render(){
+      const {filter, sort, search, tagFilter} = state;
+      let items = [...state.items];
+
+      // filter by status / tag / search
+      if (filter === 'active') items = items.filter(t => !t.done);
+      if (filter === 'done') items = items.filter(t => t.done);
+      if (tagFilter) items = items.filter(t => t.tags?.includes(tagFilter));
+      if (search.trim()){
+        const q = search.trim().toLowerCase();
+        items = items.filter(t => (t.title+t.notes+(t.tags||[]).join(',')).toLowerCase().includes(q));
+      }
+
+      // sort
+      items.sort((a,b)=>{
+        switch(state.sort){
+          case 'created-asc': return a.createdAt - b.createdAt;
+          case 'created-desc': return b.createdAt - a.createdAt;
+          case 'due-asc': return (a.due?+new Date(a.due):Infinity) - (b.due?+new Date(b.due):Infinity);
+          case 'due-desc': return (b.due?+new Date(b.due):-Infinity) - (a.due?+new Date(a.due):-Infinity);
+          case 'priority-asc': return byPriority(a.priority)-byPriority(b.priority);
+          case 'priority-desc': return byPriority(b.priority)-byPriority(a.priority);
+          default: return 0;
+        }
+      });
+
+      // list
+      els.list.innerHTML = '';
+      if (!items.length){
+        const li = document.createElement('li');
+        li.className = 'todo';
+        li.innerHTML = `<div style="grid-column:1/-1;color:var(--muted)">No items. Add one above 👆</div>`;
+        els.list.appendChild(li);
+      } else {
+        const frag = document.createDocumentFragment();
+        items.forEach(t => frag.appendChild(renderItem(t)));
+        els.list.appendChild(frag);
+      }
+
+      // stats
+      const total = state.items.length;
+      const done = state.items.filter(t=>t.done).length;
+      const active = total - done;
+      const tagHint = tagFilter ? ` • tag: #${escapeHTML(tagFilter)}` : '';
+      els.stats.textContent = `${total} item${total!==1?'s':''} • ${active} active • ${done} done${tagHint}`;
+    }
+
+    function renderItem(t){
+      const li = document.createElement('li');
+      li.className = 'todo' + (t.done ? ' done':'');
+      li.dataset.id = t.id;
+      li.innerHTML = `
+        <div>
+          <input type="checkbox" aria-label="toggle done" ${t.done?'checked':''}/>
+        </div>
+        <div>
+          <div class="title">${escapeHTML(t.title)}</div>
+          <div class="meta">
+            ${t.priority ? `<span class="pri ${t.priority}">${t.priority}</span>`:''}
+            ${t.due ? `<span>📅 ${fmtDate(t.due)}</span>`:''}
+            ${t.notes ? `<span>📝 ${escapeHTML(t.notes)}</span>`:''}
+            ${Array.isArray(t.tags) ? t.tags.map(tag => `<span class="tag" data-tag="${escapeHTML(tag)}">#${escapeHTML(tag)}</span>`).join(''):''}
+          </div>
+        </div>
+        <div class="actions">
+          <button class="edit" title="Edit">✏️</button>
+          <button class="delete" title="Delete">🗑️</button>
+        </div>
+      `;
+      // wire item controls
+      const [chk] = li.getElementsByTagName('input');
+      chk.addEventListener('change', () => toggleDone(t.id, chk.checked));
+      li.querySelector('.delete').addEventListener('click', () => remove(t.id));
+      li.querySelector('.edit').addEventListener('click', () => startEdit(t.id));
+      li.querySelectorAll('.tag').forEach(tagEl=>{
+        tagEl.addEventListener('click', ()=>{
+          state.tagFilter = tagEl.dataset.tag || null;
+          els.search.value = '';
+          state.search = '';
+          render();
+        });
+      });
+      // delete via keyboard when focused
+      li.addEventListener('keydown', (e)=>{
+        if (e.key === 'Delete' || e.key === 'Backspace'){
+          e.preventDefault();
+          remove(t.id);
+        }
+      });
+      li.tabIndex = 0;
+      return li;
+    }
+
+    // ---------- Actions ----------
+    function add(item){
+      state.items.unshift(item);
+      save(); render();
+    }
+    function update(id, patch){
+      const i = state.items.findIndex(t=>t.id===id);
+      if (i<0) return;
+      state.items[i] = {...state.items[i], ...patch, updatedAt: Date.now()};
+      save(); render();
+    }
+    function remove(id){
+      state.items = state.items.filter(t=>t.id!==id);
+      // if removing the one being edited, reset
+      if (state.editingId === id) resetForm();
+      save(); render();
+    }
+    function toggleDone(id, done){
+      update(id, {done});
+    }
+
+    // ---------- Form / Edit ----------
+    function resetForm(){
+      els.form.reset();
+      els.priority.value = 'med';
+      els.submitBtn.textContent = 'Add';
+      els.cancelEdit.style.display = 'none';
+      state.editingId = null;
+    }
+    function startEdit(id){
+      const t = state.items.find(x=>x.id===id);
+      if (!t) return;
+      state.editingId = id;
+      els.title.value = t.title || '';
+      els.notes.value = t.notes || '';
+      els.priority.value = t.priority || 'med';
+      els.due.value = t.due || '';
+      els.tags.value = (t.tags||[]).join(', ');
+      els.submitBtn.textContent = 'Save changes';
+      els.cancelEdit.style.display = 'inline-flex';
+      els.title.focus();
+    }
+
+    els.cancelEdit.addEventListener('click', resetForm);
+
+    els.form.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const title = els.title.value.trim();
+      if (!title){ els.title.focus(); return; }
+      const item = {
+        id: state.editingId || id(),
+        title,
+        notes: els.notes.value.trim(),
+        priority: els.priority.value,
+        due: els.due.value || '',
+        tags: els.tags.value.split(',').map(s=>s.trim()).filter(Boolean),
+        done: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      if (state.editingId){
+        const keepDone = state.items.find(t=>t.id===state.editingId)?.done || false;
+        update(state.editingId, {...item, done: keepDone});
+      } else {
+        add(item);
+      }
+      resetForm();
+      els.title.focus();
+    });
+
+    // ---------- Filters / Search / Sort ----------
+    els.filterButtons.forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        els.filterButtons.forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        state.filter = btn.dataset.filter;
+        state.tagFilter = null; // clear tag filter when switching
+        render();
+      });
+    });
+    els.search.addEventListener('input', ()=>{
+      state.search = els.search.value;
+      state.tagFilter = null;
+      render();
+    });
+    els.sort.addEventListener('change', ()=>{
+      state.sort = els.sort.value;
+      render();
+    });
+
+    // ---------- Import / Export ----------
+    els.exportBtn.addEventListener('click', ()=>{
+      const blob = new Blob([JSON.stringify(state.items, null, 2)], {type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'routewalker-todos.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    els.importInput.addEventListener('change', async (e)=>{
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try{
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (!Array.isArray(data)) throw new Error('Invalid file');
+        // shallow validation
+        state.items = data.map(x=>({
+          id: x.id || id(),
+          title: String(x.title||'').slice(0,200),
+          notes: String(x.notes||'').slice(0,500),
+          due: x.due || '',
+          priority: ['low','med','high'].includes(x.priority) ? x.priority : 'med',
+          tags: Array.isArray(x.tags) ? x.tags.map(t=>String(t)) : [],
+          done: !!x.done,
+          createdAt: x.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        }));
+        save(); render();
+      }catch(err){
+        alert('Import failed: ' + err.message);
+      }finally{
+        e.target.value = '';
+      }
+    });
+
+    // ---------- Theme ----------
+    function applyTheme(t){
+      document.documentElement.dataset.theme = t;
+      if (t === 'light'){
+        document.documentElement.style.colorScheme = 'light';
+      } else if (t === 'dark'){
+        document.documentElement.style.colorScheme = 'dark';
+      } else {
+        document.documentElement.style.removeProperty('color-scheme');
+      }
+      localStorage.setItem(THEME_KEY, t);
+    }
+    els.themeBtn.addEventListener('click', ()=>{
+      const cur = localStorage.getItem(THEME_KEY) || 'auto';
+      applyTheme(cur === 'auto' ? 'dark' : cur === 'dark' ? 'light' : 'auto');
+    });
+
+    // ---------- Keyboard Shortcuts ----------
+    window.addEventListener('keydown', (e)=>{
+      if (e.target.matches('input, textarea, select')) return;
+      if (e.key === 'n' || e.key === 'N'){ els.title.focus(); e.preventDefault(); }
+      if (e.key === '/'){ els.search.focus(); e.preventDefault(); }
+    });
+
+    // ---------- Init ----------
+    (function init(){
+      state.items = load();
+      // theme init
+      applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+      render();
+    })();
+
+    // (Extension hook) window.todoApp exposes tiny API for future add-ons:
+    window.todoApp = {
+      addQuick: (title, opts={}) => add({
+        id:id(), title, notes:opts.notes||'', due:opts.due||'',
+        priority:opts.priority||'med', tags:opts.tags||[], done:false,
+        createdAt:Date.now(), updatedAt:Date.now()
+      }),
+      list: () => [...state.items],
+      clearDone: () => { state.items = state.items.filter(t=>!t.done); save(); render(); },
+      onRender: (fn) => { // simple subscriber
+        const orig = render;
+        render = function(){ orig(); fn([...state.items]); };
+      }
+    };
+  </script>
+</body>
+</html>
